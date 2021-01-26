@@ -1,3 +1,7 @@
+dd2419_coco
+wandb 
+det_*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
