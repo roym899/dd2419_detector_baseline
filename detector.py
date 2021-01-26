@@ -32,10 +32,10 @@ class Detector(nn.Module):
         # Where rel_x_offset, rel_y_offset is relative offset from cell_center
         # Where rel_x_width, rel_y_width is relative to image size
         # Where confidence is predicted IOU * probability of object center in this cell
-        self.out_cells_x = 20
-        self.out_cells_y = 15
-        self.img_height = 480
-        self.img_width = 640
+        self.out_cells_x = 20.0
+        self.out_cells_y = 15.0
+        self.img_height = 480.0
+        self.img_width = 640.0
 
     def forward(self, inp):
         """Forward pass.
@@ -87,11 +87,11 @@ class Detector(nn.Module):
                 height = self.img_height * bb_coeffs[3]
                 y = (
                     self.img_height / self.out_cells_y * (bb_index[0] + bb_coeffs[1])
-                    - height / 2
+                    - height / 2.0
                 )
                 x = (
                     self.img_width / self.out_cells_x * (bb_index[1] + bb_coeffs[0])
-                    - width / 2
+                    - width / 2.0
                 )
 
                 img_bbs.append(
@@ -140,16 +140,16 @@ class Detector(nn.Module):
             width = ann["bbox"][2]
             height = ann["bbox"][3]
 
-            x_center = x + width / 2
-            y_center = y + height / 2
-            x_center_rel = x_center / 640 * self.out_cells_x
-            y_center_rel = y_center / 480 * self.out_cells_y
+            x_center = x + width / 2.0
+            y_center = y + height / 2.0
+            x_center_rel = x_center / self.img_width * self.out_cells_x
+            y_center_rel = y_center / self.img_height * self.out_cells_y
             x_ind = int(x_center_rel)
             y_ind = int(y_center_rel)
             x_cell_pos = x_center_rel - x_ind
             y_cell_pos = y_center_rel - y_ind
-            rel_width = width / 640
-            rel_height = height / 480
+            rel_width = width / self.img_width
+            rel_height = height / self.img_height
 
             # channels, rows (y cells), cols (x cells)
             target[4, y_ind, x_ind] = 1
