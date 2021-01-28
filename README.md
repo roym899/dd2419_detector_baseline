@@ -21,7 +21,9 @@ See `Detector.__init__` and `Detector.forward` in `detector.py`.
 ## Bounding Box Parametrization
 In general, neural networks are just a class of function approximators. To learn bounding boxes we need to find a bounding box parametrization that can be handled by the neural network. Here we choose to divide the image into 20x15 squares (based on MobileNetV2's output resolution for 640x480 input images). Each square predicts whether a bounding box center falls into it or not. Additionally we regress the relative offset of the center inside the cell, as well as the relative size of the bounding box (relative to the input image, i.e., width=1 corresponds to a bounding box width of 640). Hence for each cell we predict 5 numbers: the confidence that a bounding box center is in this cell, the relative x offset, the relative y offset, the relative width and the relative height. See below for an example.
 
-To learn the bounding boxes we need to produce the desired output of the network. For that we transform the ground truth bounding boxes (which were hand labeled) to the desired output format. See below for an example.
+![Image of Bounding Box Decoding](architecture_visualization/bb_decoding.png)
+
+To learn the bounding boxes we need to produce the desired output of the network. For that we transform the ground truth bounding boxes (which were hand labeled) to the desired output format.
 
 It is very important to make sure that the target generation (i.e., bounding box labels to target tensor) corresponds perfectly to the decoding (i.e., tensor to bounding boxes) of the network output. That is, decoding the target tensor should reproduce the bounding box labels.
 
@@ -37,3 +39,17 @@ PyTorch will automatically compute the gradients of the loss function with respe
 See `train.py` for the dataset loading and training loop.
 
 You can also have a look at `utils.py` which contains functions to visualize bounding boxes, save and load models.
+
+## Running and Monitoring the Training
+To monitor the training you need an account on [wandb.ai](https://wandb.ai/home) (you can sign up using Google or GitHub). You will need to link your machine with your wandb account using your API key. The process is quite straightforward as you will be asked for an API key when executing the training script for the first time. The plugin will provide you with a link where to find the key.
+
+To run the training you need the traffic sign dataset in the folder `./dd2419_coco` (see Canvas for dataset links). 
+
+To run the training on CPU execute
+```shell
+python train.py --cpu
+```
+for GPU execute
+```shell
+python train.py --gpu
+```

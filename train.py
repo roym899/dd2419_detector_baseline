@@ -1,4 +1,5 @@
 """Training script for detector."""
+import argparse
 from datetime import datetime
 import os
 
@@ -13,14 +14,16 @@ import wandb
 import utils
 from detector import Detector
 
-wandb.init(project="detector_baseline")
-
 NUM_CATEGORIES = 15
 
 
-def train():
-    """Train the network."""
-    device = "cuda"  # "cpu" or "cuda" to switch between device
+def train(device="cpu"):
+    """Train the network.
+
+    Args:
+        device: The device to train on."""
+
+    wandb.init(project="detector_baseline")
 
     # Init model
     detector = Detector().to(device)
@@ -148,4 +151,10 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    parser = argparse.ArgumentParser()
+
+    device = parser.add_mutually_exclusive_group(required=True)
+    device.add_argument("--cpu", dest="device", action="store_const", const="cpu")
+    device.add_argument("--gpu", dest="device", action="store_const", const="cuda")
+    args = parser.parse_args()
+    train(args.device)
