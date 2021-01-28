@@ -10,7 +10,7 @@ The image below shows the high-level architecture.
 
 ![Image of Detector Architecture](architecture_visualization/detector_overview.png)
 
-MobileNetV2 is a well established lightweight backend designed for mobile applications. Inference can be performed on CPU while still achieving decent framerates. Additionally our task is not very complicated, hence it is expected that a smaller network such as this is sufficient. Pretrained backends have been trained on large datasets (such as ImageNet classification) and can be reused for other tasks (such as detection, segmentation, etc.) by only replacing the head of the network. This significantly reduces training time and potentially improves generalization performance.
+MobileNetV2 is a well established lightweight backbone designed for mobile applications. Inference can be performed on CPU while still achieving decent framerates. Additionally our task is not very complicated, hence it is expected that a smaller network such as this is sufficient. Pretrained backbones have been trained on large datasets (such as ImageNet classification) and can be reused for other tasks (such as detection, segmentation, etc.) by only replacing the head of the network. This significantly reduces training time and potentially improves generalization performance.
 
 For an input resolution of 640x480 the network produces a 15x7x1280 feature tensor. This can roughly be interpreted as 1280 features for 15x7 image squares, although features do contain information from neighboring regions and even the whole image.
 
