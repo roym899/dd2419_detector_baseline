@@ -118,8 +118,8 @@ def train(device="cpu"):
             )
 
             print(
-                "Itration: {}, loss: {}".format(current_iteration, loss.item()),
-                end="\r",
+                "\rIteration: {}, loss: {}".format(current_iteration, loss.item()),
+                end="",
             )
 
             # generate visualization every N iterations
@@ -150,7 +150,7 @@ def train(device="cpu"):
             if current_iteration > max_iterations:
                 break
 
-    print("Training completed (max iterations reached)")
+    print("\nTraining completed (max iterations reached)")
 
     model_path = "{}.pt".format(run_name)
     utils.save_model(detector, model_path)
