@@ -8,7 +8,7 @@ Tested with Python 2.7.17 + torch 1.4.0 & Python 3.7.5 + torch 1.7.1
 ## Overview
 The image below shows the high-level architecture.
 
-MobileNetV2 is a well established lightweight backend designed for mobile applications. Inference can be performed on CPU while still achieving decent framerates. Additionally our task is not very complicated, hence it is expected that a smaller network such as this is sufficient. Pretrained backends have been trained on large datasets (such as ImageNet classification) and can be reused for other tasks (such as detection, segmentation, etc.) by only replacing the head of the network. This significantly reduces training time and potentially improves generalization performance.
+MobileNetV2 is a well established lightweight backbone designed for mobile applications. Inference can be performed on CPU while still achieving decent framerates. Additionally our task is not very complicated, hence it is expected that a smaller network such as this is sufficient. Pretrained backbones have been trained on large datasets (such as ImageNet classification) and can be reused for other tasks (such as detection, segmentation, etc.) by only replacing the head of the network. This significantly reduces training time and potentially improves generalization performance.
 
 For an input resolution of 640x480 the network produces a 15x7x1280 feature tensor. This can roughly be interpreted as 1280 features for each of the 15x7 image squares, although features do contain information from neighboring regions and even the whole image.
 
