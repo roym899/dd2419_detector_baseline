@@ -1,4 +1,6 @@
 """Training script for detector."""
+from __future__ import print_function
+
 import argparse
 from datetime import datetime
 import os
@@ -45,7 +47,7 @@ def train(device="cpu"):
     weight_noobj = wandb.config.weight_noobj = 1
 
     # run name (to easily identify model later)
-    time_string = datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+    time_string = datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
     run_name = wandb.config.run_name = "det_{}".format(time_string)
 
     # init optimizer
@@ -68,6 +70,8 @@ def train(device="cpu"):
         test_images = torch.stack(test_images)
         test_images = test_images.to(device)
         show_test_images = True
+
+    print("Training started...")
 
     current_iteration = 1
     while current_iteration <= max_iterations:
@@ -96,11 +100,7 @@ def train(device="cpu"):
                 out[neg_indices[0], 4, neg_indices[1], neg_indices[2]],
                 target_batch[neg_indices[0], 4, neg_indices[1], neg_indices[2]],
             )
-            loss = (
-                pos_mse
-                + weight_reg * reg_mse
-                + weight_noobj * neg_mse
-            )
+            loss = pos_mse + weight_reg * reg_mse + weight_noobj * neg_mse
 
             # optimize
             optimizer.zero_grad()
@@ -115,6 +115,11 @@ def train(device="cpu"):
                     "loss reg": reg_mse.item(),
                 },
                 step=current_iteration,
+            )
+
+            print(
+                "Itration: {}, loss: {}".format(current_iteration, loss.item()),
+                end="\r",
             )
 
             # generate visualization every N iterations
@@ -145,14 +150,17 @@ def train(device="cpu"):
             if current_iteration > max_iterations:
                 break
 
+    print("Training completed (max iterations reached)")
+
     model_path = "{}.pt".format(run_name)
     utils.save_model(detector, model_path)
     wandb.save(model_path)
 
+    print("Model weights saved at {}".format(model_path))
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-
     device = parser.add_mutually_exclusive_group(required=True)
     device.add_argument("--cpu", dest="device", action="store_const", const="cpu")
     device.add_argument("--gpu", dest="device", action="store_const", const="cuda")
