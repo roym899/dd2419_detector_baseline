@@ -60,7 +60,7 @@ def train(device="cpu"):
     directory = "./test_images"
     if not os.path.exists(directory):
         os.makedirs(directory)
-    for file_name in os.listdir(directory):
+    for file_name in sorted(os.listdir(directory)):
         if file_name.endswith(".jpg"):
             file_path = os.path.join(directory, file_name)
             test_image = Image.open(file_path)
@@ -118,8 +118,7 @@ def train(device="cpu"):
             )
 
             print(
-                "\rIteration: {}, loss: {}".format(current_iteration, loss.item()),
-                end="",
+                "Iteration: {}, loss: {}".format(current_iteration, loss.item()),
             )
 
             # generate visualization every N iterations
