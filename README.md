@@ -14,7 +14,7 @@ MobileNetV2 is a well established lightweight backbone designed for mobile appli
 
 For an input resolution of 640x480 the network produces a 20x15x1280 feature tensor. This can roughly be interpreted as 1280 features for 20x15 image squares, although features do contain information from neighboring regions and even the whole image.
 
-The head of our network is a 1x1 convolutional filter with 5 kernels, where the 5 output channels together encode the bounding box information (see below for why we use 5 channels). A 1x1 convolutional filter applied to the 20x15x1280 feature tensor will produce a 20x15x5 output tensor (you can imagine that for each 1280 feature vector x we apply a transformation y = Ax + b producing a 5-dimensional output vector y).
+The head of our network is a 1x1 convolutional filter with 5 kernels, where the 5 output channels together encode the bounding box information (see below for why we use 5 channels). A 1x1 convolutional filter applied to the 20x15x1280 feature tensor will produce a 20x15x5 output tensor (you can imagine that for each 1280 feature vector `x` we apply a transformation `y = Ax + b` producing a 5-dimensional output vector `y`, where `A` and `b` are the weights of the 5 kernels).
 
 See `Detector.__init__` and `Detector.forward` in `detector.py`.
 
