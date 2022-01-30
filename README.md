@@ -27,7 +27,7 @@ To learn the bounding boxes we need to produce the desired output of the network
 
 It is very important to make sure that the target generation (i.e., bounding box labels to target tensor) corresponds perfectly to the decoding (i.e., tensor to bounding boxes) of the network output. That is, decoding the target tensor should reproduce the bounding box labels.
 
-Note that the current architecture is limited in that it can not represent multiple bounding boxes with the center falling into the same cell and it does not do any classification yet. Think about how to extend the network to also classify the bounding boxes. Not supporting multiple bounding boxes per cell should be no problem for the task at hand.
+Note that the current architecture is limited in that it can not represent multiple bounding boxes with the center falling into the same cell and it does not do any classification yet. Think about how to extend the network to also classify the bounding boxes. Not supporting multiple bounding boxes per cell should not problem for the task at hand.
 
 This is the most complicated part of the detector implementation. See `Detector.input_transform` and `Detector.decode_output`. Try to understand how it relates to the concepts described above.
 
