@@ -64,7 +64,8 @@ def train(device="cpu"):
         if file_name.endswith(".jpg"):
             file_path = os.path.join(directory, file_name)
             test_image = Image.open(file_path)
-            test_images.append(TF.to_tensor(test_image))
+            torch_image, _ = detector.input_transform(test_image, [])
+            test_images.append(torch_image)
 
     if test_images:
         test_images = torch.stack(test_images)
@@ -123,6 +124,7 @@ def train(device="cpu"):
 
             # generate visualization every N iterations
             if current_iteration % 250 == 0 and show_test_images:
+                detector.eval()
                 with torch.no_grad():
                     out = detector(test_images).cpu()
                     bbs = detector.decode_output(out, 0.5)
@@ -144,6 +146,7 @@ def train(device="cpu"):
                             {"test_img_{i}".format(i=i): figure}, step=current_iteration
                         )
                         plt.close()
+                detector.train()
 
             current_iteration += 1
             if current_iteration > max_iterations:
