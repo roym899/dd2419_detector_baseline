@@ -113,7 +113,7 @@ class Detector(nn.Module):
         Must be passed as transforms function to dataset.
 
         Args:
-            image (torch.Tensor):
+            image (PIL.Image):
                 The image loaded from the dataset.
             anns (List):
                 List of annotations in COCO format.
@@ -132,7 +132,7 @@ class Detector(nn.Module):
         # Last channel is 1 for cell with bounding box center and 0 without
 
         # If there is no bb, the first 4 channels will not influence the loss
-        # -> can be any number (will be kept at 0 zero)
+        # -> can be any number (will be kept at 0)
         target = torch.zeros(5, 15, 20)
         for ann in anns:
             x = ann["bbox"][0]
