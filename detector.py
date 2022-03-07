@@ -3,6 +3,7 @@
 Inspired by
 You only look once: Unified, real-time object detection, Redmon, 2016.
 """
+import numpy as np
 import torch
 import torch.nn as nn
 from torchvision import models
@@ -45,7 +46,7 @@ class Detector(nn.Module):
 
         return out
 
-    def decode_output(self, out, threshold):
+    def decode_output(self, out, threshold=None, topk=100):
         """Convert output to list of bounding boxes.
 
         Args:
@@ -56,8 +57,11 @@ class Detector(nn.Module):
                     C = channel size
                     H = image height
                     W = image width
-            threshold (float):
+            threshold (Optional[float]):
                 The threshold above which a bounding box will be accepted.
+                If None, the topk bounding boxes will be returned.
+            topk (int):
+                Number of returned bounding boxes if threshold is None.
         Returns:
             List[List[Dict]]
             List containing a list of detected bounding boxes in each image.
@@ -66,31 +70,39 @@ class Detector(nn.Module):
                 - "y": Top-left corner row
                 - "width": Width of bounding box in pixel
                 - "height": Height of bounding box in pixel
+                - "score": Confidence score of bounding box
                 - "category": Category (not implemented yet!)
         """
         bbs = []
+        out = out.cpu()
         # decode bounding boxes for each image
         for o in out:
             img_bbs = []
 
             # find cells with bounding box center
-            bb_indices = torch.nonzero(o[4, :, :] >= threshold)
+            if threshold is not None:
+                bb_indices = torch.nonzero(o[4, :, :] >= threshold)
+            else:
+                _, flattened_indices = torch.topk(o[4, :, :].flatten(), topk)
+                bb_indices = np.array(
+                    np.unravel_index(flattened_indices.numpy(), o[4, :, :].shape)
+                ).T
 
             # loop over all cells with bounding box center
             for bb_index in bb_indices:
                 bb_coeffs = o[0:4, bb_index[0], bb_index[1]]
 
                 # decode bounding box size and position
-                width = self.img_width * bb_coeffs[2]
-                height = self.img_height * bb_coeffs[3]
+                width = self.img_width * abs(bb_coeffs[2].item())
+                height = self.img_height * abs(bb_coeffs[3].item())
                 y = (
                     self.img_height / self.out_cells_y * (bb_index[0] + bb_coeffs[1])
                     - height / 2.0
-                )
+                ).item()
                 x = (
                     self.img_width / self.out_cells_x * (bb_index[1] + bb_coeffs[0])
                     - width / 2.0
-                )
+                ).item()
 
                 img_bbs.append(
                     {
@@ -98,6 +110,7 @@ class Detector(nn.Module):
                         "height": height,
                         "x": x,
                         "y": y,
+                        "score": o[4, bb_index[0], bb_index[1]].item(),
                     }
                 )
             bbs.append(img_bbs)
