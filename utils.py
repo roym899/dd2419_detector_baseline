@@ -1,20 +1,26 @@
 """Utility functions to handle object detection."""
-import torch
+from typing import Dict, List
+
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import torch
+
+from detector import BoundingBox
 
 
-def add_bounding_boxes(ax, bbs, category_dict=None):
+def add_bounding_boxes(
+    ax: plt.Axes, bbs: List[BoundingBox], category_dict: Dict[int, str] = None
+) -> None:
     """Add bounding boxes to specified axes.
 
     Args:
-        ax (plt.axis):
+        ax:
             The axis to add the bounding boxes to.
-        bbs (List[Dict]):
+        bbs:
             List of bounding boxes to display.
             Each bounding box dict has the format as specified in
-            Detector.decode_output.
-        category_dict (Dict):
+            detector.Detector.decode_output.
+        category_dict:
             Map from category id to string to label bounding boxes.
             No labels if None.
     """
@@ -37,25 +43,26 @@ def add_bounding_boxes(ax, bbs, category_dict=None):
             )
 
 
-def save_model(model, path):
+def save_model(model: torch.nn.Module, path: str) -> None:
     """Save model to disk.
 
     Args:
-        model (torch.module): The model to save.
-        path (str): The path to save the model to.
+        model: The model to save.
+        path: The path to save the model to.
     """
     torch.save(model.state_dict(), path)
 
 
-def load_model(model, path, device):
+def load_model(model: torch.nn.Module, path: str, device: str) -> torch.nn.Module:
     """Load model weights from disk.
 
     Args:
-        model (torch.module): The model to load the weights into.
-        path (str): The path from which to load the model weights.
-        device (torch.device): The device the model weights should be on.
+        model: The model to load the weights into.
+        path: The path from which to load the model weights.
+        device: The device the model weights should be on.
+
     Returns:
-        The model (note that this is the same object as the passed model).
+        The loaded model (note that this is the same object as the passed model).
     """
     state_dict = torch.load(path, map_location=device)
     model.load_state_dict(state_dict)

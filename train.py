@@ -1,25 +1,24 @@
 """Training script for detector."""
-from __future__ import print_function
-
 import argparse
-from datetime import datetime
-import os
 import copy
+import os
+from datetime import datetime
+from typing import Tuple
 
-from pycocotools.cocoeval import COCOeval
+import matplotlib.pyplot as plt
 import torch
+import wandb
+from PIL import Image
+from pycocotools.cocoeval import COCOeval
 from torch import nn
 from torchvision.datasets import CocoDetection
-from PIL import Image
-import matplotlib.pyplot as plt
-import wandb
 
 import utils
 from detector import Detector
 
 NUM_CATEGORIES = 15
 VALIDATION_ITERATION = 100
-MAX_ITERATIONS = 10000
+NUM_ITERATIONS = 10000
 LEARNING_RATE = 1e-4
 WEIGHT_POS = 1
 WEIGHT_NEG = 1
@@ -27,7 +26,9 @@ WEIGHT_REG = 1
 BATCH_SIZE = 8
 
 
-def compute_loss(prediction_batch, target_batch):
+def compute_loss(
+    prediction_batch: torch.Tensor, target_batch: torch.Tensor
+) -> Tuple[torch.Tensor]:
     """Compute loss between predicted tensor and target tensor.
 
     Args:
@@ -35,10 +36,10 @@ def compute_loss(prediction_batch, target_batch):
         target_batch: Batched targets. shape (N,C,H,W).
 
     Returns:
-        Tuple of separate loss terms:
-            reg_mse:
-            pos_mse:
-            neg_mse:
+        Tuple of three separate loss terms:
+            reg_mse: Mean squared error of regression targets.
+            pos_mse: Mean squared error of positive confidence channel.
+            neg_mse: Mean squared error of negative confidence channel.
     """
     # positive / negative indices
     # (this could be passed from input_transform to avoid recomputation)
@@ -61,12 +62,12 @@ def compute_loss(prediction_batch, target_batch):
     return reg_mse, pos_mse, neg_mse
 
 
-def train(device="cpu"):
+def train(device: str = "cpu") -> None:
     """Train the network.
 
     Args:
-        device: The device to train on."""
-
+        device: The device to train on.
+    """
     wandb.init(project="detector_baseline")
 
     # Init model
@@ -91,7 +92,7 @@ def train(device="cpu"):
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE)
 
     # training params
-    wandb.config.max_iterations = MAX_ITERATIONS
+    wandb.config.max_iterations = NUM_ITERATIONS
     wandb.config.learning_rate = LEARNING_RATE
     wandb.config.weight_pos = WEIGHT_POS
     wandb.config.weight_neg = WEIGHT_NEG
@@ -126,7 +127,7 @@ def train(device="cpu"):
     print("Training started...")
 
     current_iteration = 1
-    while current_iteration <= MAX_ITERATIONS:
+    while current_iteration <= NUM_ITERATIONS:
         for img_batch, target_batch in dataloader:
             img_batch = img_batch.to(device)
             target_batch = target_batch.to(device)
@@ -187,7 +188,7 @@ def train(device="cpu"):
                 detector.train()
 
             current_iteration += 1
-            if current_iteration > MAX_ITERATIONS:
+            if current_iteration > NUM_ITERATIONS:
                 break
 
     print("\nTraining completed (max iterations reached)")
@@ -199,7 +200,20 @@ def train(device="cpu"):
     print("Model weights saved at {}".format(model_path))
 
 
-def validate(detector, val_dataloader, current_iteration, device):
+def validate(
+    detector: Detector,
+    val_dataloader: torch.utils.data.DataLoader,
+    current_iteration: int,
+    device: str,
+) -> None:
+    """Compute validation metrics and log to wandb.
+
+    Args:
+        detector: The detector module to validate.
+        val_dataloader: The dataloader for the validation dataset.
+        current_iteration: The current training iteration. Used for logging.
+        device: The device to run validation on.
+    """
     detector.eval()
     coco_pred = copy.deepcopy(val_dataloader.dataset.coco)
     coco_pred.dataset["annotations"] = []

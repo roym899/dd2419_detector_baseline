@@ -3,17 +3,39 @@
 Inspired by
 You only look once: Unified, real-time object detection, Redmon, 2016.
 """
+from typing import List, Optional, Tuple, TypedDict
+
 import numpy as np
 import torch
 import torch.nn as nn
-from torchvision import models
-from torchvision import transforms
+from PIL import Image
+from torchvision import models, transforms
+
+
+class BoundingBox(TypedDict):
+    """Bounding box dictionary.
+
+    Attributes:
+        x: Top-left corner column
+        y: Top-left corner row
+        width: Width of bounding box in pixel
+        height: Height of bounding box in pixel
+        score: Confidence score of bounding box.
+        category: Category (not implemented yet!)
+    """
+
+    x: int
+    y: int
+    width: int
+    height: int
+    score: float
+    category: int
 
 
 class Detector(nn.Module):
     """Baseline module for object detection."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create the module.
 
         Define all trainable layers.
@@ -36,42 +58,46 @@ class Detector(nn.Module):
         self.img_height = 480.0
         self.img_width = 640.0
 
-    def forward(self, inp):
+    def forward(self, inp: torch.Tensor) -> torch.Tensor:
         """Forward pass.
 
         Compute output of neural network from input.
+
+        Args:
+            inp: The input images. Shape (N, 3, H, W).
+
+        Returns:
+            The output tensor encoding the predicted bounding boxes.
+            Shape (N, 5, self.out_cells_y, self.out_cells_y).
         """
         features = self.features(inp)
         out = self.head(features)  # Linear (i.e., no) activation
 
         return out
 
-    def decode_output(self, out, threshold=None, topk=100):
+    def decode_output(
+        self, out: torch.Tensor, threshold: Optional[float] = None, topk: int = 100
+    ) -> List[List[BoundingBox]]:
         """Convert output to list of bounding boxes.
 
         Args:
             out (torch.tensor):
-                The output of the network.
-                Shape expected to be NxCxHxW with
-                    N = batch size
-                    C = channel size
-                    H = image height
-                    W = image width
-            threshold (Optional[float]):
-                The threshold above which a bounding box will be accepted.
+                The output tensor encoding the predicted bounding boxes.
+                Shape (N, 5, self.out_cells_y, self.out_cells_y).
+                The 5 channels encode in order:
+                    - the x offset,
+                    - the y offset,
+                    - the width,
+                    - the height,
+                    - the confidence.
+            threshold:
+                The confidence threshold above which a bounding box will be accepted.
                 If None, the topk bounding boxes will be returned.
             topk (int):
                 Number of returned bounding boxes if threshold is None.
+
         Returns:
-            List[List[Dict]]
-            List containing a list of detected bounding boxes in each image.
-            Each dictionary contains the following keys:
-                - "x": Top-left corner column
-                - "y": Top-left corner row
-                - "width": Width of bounding box in pixel
-                - "height": Height of bounding box in pixel
-                - "score": Confidence score of bounding box
-                - "category": Category (not implemented yet!)
+            List containing N lists of detected bounding boxes in the respective images.
         """
         bbs = []
         out = out.cpu()
@@ -117,21 +143,24 @@ class Detector(nn.Module):
 
         return bbs
 
-    def input_transform(self, image, anns):
+    def input_transform(self, image: Image, anns: List) -> Tuple[torch.Tensor]:
         """Prepare image and targets on loading.
 
         This function is called before an image is added to a batch.
         Must be passed as transforms function to dataset.
 
         Args:
-            image (PIL.Image):
+            image:
                 The image loaded from the dataset.
-            anns (List):
+            anns:
                 List of annotations in COCO format.
+
         Returns:
             Tuple:
-                - (torch.Tensor) The image.
-                - (torch.Tensor) The network target containing the bounding box.
+                image: The image. Shape (3, H, W).
+                target:
+                    The network target encoding the bounding box.
+                    Shape (5, self.out_cells_y, self.out_cells_x).
         """
         # Convert PIL.Image to torch.Tensor
         image = transforms.ToTensor()(image)
@@ -147,7 +176,7 @@ class Detector(nn.Module):
 
         # If there is no bb, the first 4 channels will not influence the loss
         # -> can be any number (will be kept at 0)
-        target = torch.zeros(5, 15, 20)
+        target = torch.zeros(5, self.out_cells_y, self.out_cells_x)
         for ann in anns:
             x = ann["bbox"][0]
             y = ann["bbox"][1]
