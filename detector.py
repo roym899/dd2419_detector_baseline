@@ -53,8 +53,8 @@ class Detector(nn.Module):
         # Where rel_x_offset, rel_y_offset is relative offset from cell_center
         # Where rel_x_width, rel_y_width is relative to image size
         # Where confidence is predicted IOU * probability of object center in this cell
-        self.out_cells_x = 20.0
-        self.out_cells_y = 15.0
+        self.out_cells_x = 20
+        self.out_cells_y = 15
         self.img_height = 480.0
         self.img_width = 640.0
 
