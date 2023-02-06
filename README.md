@@ -1,9 +1,8 @@
 # DD2419 Detector Baseline
 Simple detector baseline for DD2419 KTH course.
 
-Should work with most recent Python and torch versions.
+Requires at least Python 3.8. Tested with Python 3.8.10 and torch 1.13.1. See [requirements.txt](requirements.txt) for the tested setup. Should work fine with more recent Python and PyTorch versions.
 
-Tested with Python 2.7.17 + torch 1.4.0 & Python 3.7.5 + torch 1.7.1
 
 ## Overview
 The image below shows the high-level architecture.
