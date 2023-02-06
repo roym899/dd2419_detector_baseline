@@ -43,7 +43,7 @@ def add_bounding_boxes(
             )
 
 
-def save_model(model: torch.Module, path: str) -> None:
+def save_model(model: torch.nn.Module, path: str) -> None:
     """Save model to disk.
 
     Args:
@@ -53,7 +53,7 @@ def save_model(model: torch.Module, path: str) -> None:
     torch.save(model.state_dict(), path)
 
 
-def load_model(model: torch.Module, path: str, device: str) -> torch.Module:
+def load_model(model: torch.nn.Module, path: str, device: str) -> torch.nn.Module:
     """Load model weights from disk.
 
     Args:
