@@ -7,18 +7,18 @@ from typing import Tuple
 
 import matplotlib.pyplot as plt
 import torch
+import wandb
 from PIL import Image
 from pycocotools.cocoeval import COCOeval
 from torch import nn
 from torchvision.datasets import CocoDetection
 
 import utils
-import wandb
 from detector import Detector
 
 NUM_CATEGORIES = 15
 VALIDATION_ITERATION = 100
-MAX_ITERATIONS = 10000
+NUM_ITERATIONS = 10000
 LEARNING_RATE = 1e-4
 WEIGHT_POS = 1
 WEIGHT_NEG = 1
@@ -92,7 +92,7 @@ def train(device: str = "cpu") -> None:
     val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE)
 
     # training params
-    wandb.config.max_iterations = MAX_ITERATIONS
+    wandb.config.max_iterations = NUM_ITERATIONS
     wandb.config.learning_rate = LEARNING_RATE
     wandb.config.weight_pos = WEIGHT_POS
     wandb.config.weight_neg = WEIGHT_NEG
@@ -127,7 +127,7 @@ def train(device: str = "cpu") -> None:
     print("Training started...")
 
     current_iteration = 1
-    while current_iteration <= MAX_ITERATIONS:
+    while current_iteration <= NUM_ITERATIONS:
         for img_batch, target_batch in dataloader:
             img_batch = img_batch.to(device)
             target_batch = target_batch.to(device)
@@ -188,7 +188,7 @@ def train(device: str = "cpu") -> None:
                 detector.train()
 
             current_iteration += 1
-            if current_iteration > MAX_ITERATIONS:
+            if current_iteration > NUM_ITERATIONS:
                 break
 
     print("\nTraining completed (max iterations reached)")
