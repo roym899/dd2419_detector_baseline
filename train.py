@@ -1,4 +1,5 @@
 """Training script for detector."""
+
 import argparse
 import copy
 import os
@@ -7,13 +8,14 @@ from typing import Tuple
 
 import matplotlib.pyplot as plt
 import torch
-import wandb
 from PIL import Image
 from pycocotools.cocoeval import COCOeval
 from torch import nn
-from torchvision.datasets import CocoDetection
+from torchvision.datasets import CocoDetection, wrap_dataset_for_transforms_v2
+from torchvision.transforms import v2
 
 import utils
+import wandb
 from detector import Detector
 
 NUM_CATEGORIES = 15
@@ -24,6 +26,7 @@ WEIGHT_POS = 1
 WEIGHT_NEG = 1
 WEIGHT_REG = 1
 BATCH_SIZE = 8
+
 
 def compute_loss(
     prediction_batch: torch.Tensor, target_batch: torch.Tensor
@@ -41,7 +44,6 @@ def compute_loss(
             neg_mse: Mean squared error of negative confidence channel.
     """
     # positive / negative indices
-    # (this could be passed from input_transform to avoid recomputation)
     pos_indices = torch.nonzero(target_batch[:, 4, :, :] == 1, as_tuple=True)
     neg_indices = torch.nonzero(target_batch[:, 4, :, :] == 0, as_tuple=True)
 
@@ -74,21 +76,38 @@ def train(device: str = "cpu") -> None:
 
     wandb.watch(detector)
 
+    input_transforms = v2.Compose(
+        [
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ]
+    )
+
     dataset = CocoDetection(
         root="./dd2419_coco/training",
         annFile="./dd2419_coco/annotations/training.json",
-        transforms=detector.input_transform,
+        transforms=input_transforms,
     )
+    dataset = wrap_dataset_for_transforms_v2(dataset)
     val_dataset = CocoDetection(
         root="./dd2419_coco/validation",
         annFile="./dd2419_coco/annotations/validation.json",
-        transforms=detector.input_transform,
+        transforms=input_transforms,  # make sure not to accidentally augment validation data
     )
+    val_dataset = wrap_dataset_for_transforms_v2(val_dataset)
 
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=BATCH_SIZE, shuffle=True
+        dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        collate_fn=lambda batch: tuple(zip(*batch)),
     )
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE)
+    val_dataloader = torch.utils.data.DataLoader(
+        val_dataset,
+        batch_size=BATCH_SIZE,
+        collate_fn=lambda batch: tuple(zip(*batch)),
+    )
 
     # training params
     wandb.config.max_iterations = NUM_ITERATIONS
@@ -118,13 +137,17 @@ def train(device: str = "cpu") -> None:
 
     if test_images:
         show_test_images = True
+        test_image_batch = torch.stack(input_transforms(test_images)).to(device)
 
     print("Training started...")
 
     current_iteration = 1
     while current_iteration <= NUM_ITERATIONS:
-        for img_batch, target_batch in dataloader:
-            img_batch = img_batch.to(device)
+        for images, anns in dataloader:
+            # convert bounding boxes to target tensor
+            target_batch = detector.anns_to_target_batch(anns)
+
+            img_batch = torch.stack(images).to(device)
             target_batch = target_batch.to(device)
 
             # run network
@@ -160,17 +183,17 @@ def train(device: str = "cpu") -> None:
             if current_iteration % VALIDATION_ITERATION == 1 and show_test_images:
                 detector.eval()
                 with torch.no_grad():
-                    torch_images = torch.stack([detector.input_transform(img, [])[0] for img in test_images])
-                    torch_images = torch_images.to(device)
-
-                    out = detector(torch_images).cpu()
-                    bbs = detector.decode_output(out, 0.5)
+                    out = detector(test_image_batch).cpu()
+                    bbs = detector.out_to_bbs(out, 0.5)
 
                     for i, test_image in enumerate(test_images):
                         # add bounding boxes
-                        result_image = utils.draw_detections(test_image, bbs[i], confidence=out[i, 4, :, :])
+                        result_image = utils.draw_detections(
+                            test_image, bbs[i], confidence=out[i, 4, :, :]
+                        )
                         wandb.log(
-                            {"test_img_{i}".format(i=i): wandb.Image(result_image)}, step=current_iteration
+                            {"test_img_{i}".format(i=i): wandb.Image(result_image)},
+                            step=current_iteration,
                         )
                         plt.close()
                 detector.train()
@@ -208,16 +231,16 @@ def validate(
     with torch.no_grad():
         count = total_pos_mse = total_reg_mse = total_neg_mse = loss = 0
         image_id = ann_id = 0
-        for val_img_batch, val_target_batch in val_dataloader:
-            val_img_batch = val_img_batch.to(device)
-            val_target_batch = val_target_batch.to(device)
+        for val_images, val_anns in val_dataloader:
+            val_img_batch = torch.stack(val_images).to(device)
+            val_target_batch = detector.anns_to_target_batch(val_anns).to(device)
             val_out = detector(val_img_batch)
             reg_mse, pos_mse, neg_mse = compute_loss(val_out, val_target_batch)
             total_reg_mse += reg_mse
             total_pos_mse += pos_mse
             total_neg_mse += neg_mse
             loss += WEIGHT_POS * pos_mse + WEIGHT_REG * reg_mse + WEIGHT_NEG * neg_mse
-            imgs_bbs = detector.decode_output(val_out, topk=100)
+            imgs_bbs = detector.out_to_bbs(val_out, topk=100)
             for img_bbs in imgs_bbs:
                 for img_bb in img_bbs:
                     coco_pred.dataset["annotations"].append(

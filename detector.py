@@ -45,7 +45,8 @@ class Detector(nn.Module):
         self.features = models.mobilenet_v2(pretrained=True).features
         # output of mobilenet_v2 will be 1280x15x20 for 480x640 input images
 
-        self.head = nn.Conv2d(in_channels=1280, out_channels=5, kernel_size=1)
+        self.out_channels = 5
+        self.head = nn.Conv2d(in_channels=1280, out_channels=self.out_channels, kernel_size=1)
         # 1x1 Convolution to reduce channels to out_channels without changing H and W
 
         # 1280x15x20 -> 5x15x20, where each element 5 channel tuple corresponds to
@@ -75,7 +76,7 @@ class Detector(nn.Module):
 
         return out
 
-    def decode_output(
+    def out_to_bbs(
         self, out: torch.Tensor, threshold: Optional[float] = None, topk: int = 100
     ) -> List[List[BoundingBox]]:
         """Convert output to list of bounding boxes.
@@ -143,64 +144,49 @@ class Detector(nn.Module):
 
         return bbs
 
-    def input_transform(self, image: Image, anns: List) -> Tuple[torch.Tensor]:
-        """Prepare image and targets on loading.
-
-        This function is called before an image is added to a batch.
-        Must be passed as transforms function to dataset.
+    def anns_to_target_batch(self, anns: Tuple[dict]) -> Tuple[torch.Tensor]:
+        """Convert annotations to batched target tensor.
 
         Args:
-            image:
-                The image loaded from the dataset.
             anns:
-                List of annotations in COCO format.
+                Tuple of bounding box annotations.
+                Contains the following keys: "image_id", "boxes", "labels".
 
+                Image ids are not used. Shape (num_bbs,).
+                Boxes are in XYXY (top-left, bottom-right) format. Shape (num_bbs, 4).
+                Labels are 0-indexed class ids. Shape (num_bbs,).
         Returns:
-            Tuple:
-                image: The image. Shape (3, H, W).
-                target:
-                    The network target encoding the bounding box.
-                    Shape (5, self.out_cells_y, self.out_cells_x).
+            Target tensor for the given annotations. 
+            Shape (num_anns, self.out_channels, self.out_cells_y, self.out_cells_x).
         """
-        # Convert PIL.Image to torch.Tensor
-        image = transforms.ToTensor()(image)
-        image = transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        )(image)
-
-        # Convert bounding boxes to target format
-
         # First two channels contain relativ x and y offset of bounding box center
         # Channel 3 & 4 contain relative width and height, respectively
         # Last channel is 1 for cell with bounding box center and 0 without
 
         # If there is no bb, the first 4 channels will not influence the loss
         # -> can be any number (will be kept at 0)
-        target = torch.zeros(5, self.out_cells_y, self.out_cells_x)
-        for ann in anns:
-            x = ann["bbox"][0]
-            y = ann["bbox"][1]
-            width = ann["bbox"][2]
-            height = ann["bbox"][3]
+        target = torch.zeros(len(anns), self.out_channels, self.out_cells_y, self.out_cells_x)
 
-            x_center = x + width / 2.0
-            y_center = y + height / 2.0
-            x_center_rel = x_center / self.img_width * self.out_cells_x
-            y_center_rel = y_center / self.img_height * self.out_cells_y
-            x_ind = int(x_center_rel)
-            y_ind = int(y_center_rel)
-            x_cell_pos = x_center_rel - x_ind
-            y_cell_pos = y_center_rel - y_ind
-            rel_width = width / self.img_width
-            rel_height = height / self.img_height
+        for i, ann in enumerate(anns):
+            for box in ann["boxes"]:
+                x_center = (box[0] + box[2]) / 2
+                y_center = (box[1] + box[3]) / 2
+                x_center_rel = x_center / self.img_width * self.out_cells_x
+                y_center_rel = y_center / self.img_height * self.out_cells_y
+                x_ind = int(x_center_rel)
+                y_ind = int(y_center_rel)
+                x_cell_pos = x_center_rel - x_ind
+                y_cell_pos = y_center_rel - y_ind
+                rel_width = (box[2] - box[0]) / self.img_width
+                rel_height = (box[3] - box[1]) / self.img_height
 
-            # channels, rows (y cells), cols (x cells)
-            target[4, y_ind, x_ind] = 1
+                # channels, rows (y cells), cols (x cells)
+                target[i, 4, y_ind, x_ind] = 1
 
-            # bb size
-            target[0, y_ind, x_ind] = x_cell_pos
-            target[1, y_ind, x_ind] = y_cell_pos
-            target[2, y_ind, x_ind] = rel_width
-            target[3, y_ind, x_ind] = rel_height
+                # bb size
+                target[i, 0, y_ind, x_ind] = x_cell_pos
+                target[i, 1, y_ind, x_ind] = y_cell_pos
+                target[i, 2, y_ind, x_ind] = rel_width
+                target[i, 3, y_ind, x_ind] = rel_height
 
-        return image, target
+        return target
