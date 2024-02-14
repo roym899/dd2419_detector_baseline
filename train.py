@@ -17,14 +17,13 @@ import utils
 from detector import Detector
 
 NUM_CATEGORIES = 15
-VALIDATION_ITERATION = 100
+VALIDATION_ITERATION = 250
 NUM_ITERATIONS = 10000
 LEARNING_RATE = 1e-4
 WEIGHT_POS = 1
 WEIGHT_NEG = 1
 WEIGHT_REG = 1
 BATCH_SIZE = 8
-
 
 def compute_loss(
     prediction_batch: torch.Tensor, target_batch: torch.Tensor
@@ -115,13 +114,9 @@ def train(device: str = "cpu") -> None:
     for file_name in sorted(os.listdir(directory)):
         if file_name.endswith(".jpg"):
             file_path = os.path.join(directory, file_name)
-            test_image = Image.open(file_path)
-            torch_image, _ = detector.input_transform(test_image, [])
-            test_images.append(torch_image)
+            test_images.append(Image.open(file_path))
 
     if test_images:
-        test_images = torch.stack(test_images)
-        test_images = test_images.to(device)
         show_test_images = True
 
     print("Training started...")
@@ -158,31 +153,24 @@ def train(device: str = "cpu") -> None:
             )
 
             # Validate every N iterations
-            if current_iteration % VALIDATION_ITERATION == 0:
+            if current_iteration % VALIDATION_ITERATION == 1:
                 validate(detector, val_dataloader, current_iteration, device)
 
             # generate visualization every N iterations
-            if current_iteration % 250 == 0 and show_test_images:
+            if current_iteration % VALIDATION_ITERATION == 1 and show_test_images:
                 detector.eval()
                 with torch.no_grad():
-                    out = detector(test_images).cpu()
+                    torch_images = torch.stack([detector.input_transform(img, [])[0] for img in test_images])
+                    torch_images = torch_images.to(device)
+
+                    out = detector(torch_images).cpu()
                     bbs = detector.decode_output(out, 0.5)
 
                     for i, test_image in enumerate(test_images):
-                        figure, ax = plt.subplots(1)
-                        plt.imshow(test_image.cpu().permute(1, 2, 0))
-                        plt.imshow(
-                            out[i, 4, :, :],
-                            interpolation="nearest",
-                            extent=(0, 640, 480, 0),
-                            alpha=0.7,
-                        )
-
                         # add bounding boxes
-                        utils.add_bounding_boxes(ax, bbs[i])
-
+                        result_image = utils.draw_detections(test_image, bbs[i], confidence=out[i, 4, :, :])
                         wandb.log(
-                            {"test_img_{i}".format(i=i): figure}, step=current_iteration
+                            {"test_img_{i}".format(i=i): wandb.Image(result_image)}, step=current_iteration
                         )
                         plt.close()
                 detector.train()
@@ -256,6 +244,7 @@ def validate(
         coco_eval.evaluate()
         coco_eval.accumulate()
         coco_eval.summarize()
+
         wandb.log(
             {
                 "total val loss": (loss / count),

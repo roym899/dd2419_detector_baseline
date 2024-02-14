@@ -1,21 +1,26 @@
 """Utility functions to handle object detection."""
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
+from PIL import Image
 
 from detector import BoundingBox
 
 
-def add_bounding_boxes(
-    ax: plt.Axes, bbs: List[BoundingBox], category_dict: Dict[int, str] = None
-) -> None:
-    """Add bounding boxes to specified axes.
+def draw_detections(
+    image: Image, 
+    bbs: List[BoundingBox], 
+    category_dict: Optional[Dict[int, str]] = None,
+    confidence: Optional[torch.Tensor] = None, 
+) -> torch.Tensor:
+    """Add bounding boxes to image.
 
     Args:
-        ax:
-            The axis to add the bounding boxes to.
+        image:
+            The image without bounding boxes.
         bbs:
             List of bounding boxes to display.
             Each bounding box dict has the format as specified in
@@ -23,7 +28,19 @@ def add_bounding_boxes(
         category_dict:
             Map from category id to string to label bounding boxes.
             No labels if None.
+
+    Returns:
+        The image with bounding boxes.
     """
+    fig, ax = plt.subplots(1)
+    plt.imshow(image)
+    if confidence is not None:
+        plt.imshow(
+            confidence,
+            interpolation="nearest",
+            extent=(0, 640, 480, 0),
+            alpha=0.5,
+        )
     for bb in bbs:
         rect = patches.Rectangle(
             (bb["x"], bb["y"]),
@@ -41,6 +58,15 @@ def add_bounding_boxes(
                 bb["y"],
                 category_dict[bb["category"]]["name"],
             )
+
+
+    # Save matplotlib figure to numpy array without any borders
+    plt.axis("off")
+    plt.subplots_adjust(0,0,1,1,0,0)
+    fig.canvas.draw()
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,)).copy()
+    return torch.from_numpy(data.transpose((2, 0, 1))).float() / 255  # HWC -> CHW
 
 
 def save_model(model: torch.nn.Module, path: str) -> None:
