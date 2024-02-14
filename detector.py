@@ -155,7 +155,7 @@ class Detector(nn.Module):
                 Boxes are in XYXY (top-left, bottom-right) format. Shape (num_bbs, 4).
                 Labels are 0-indexed class ids. Shape (num_bbs,).
         Returns:
-            Target tensor for the given annotations. 
+            Target tensor for the given annotations.
             Shape (num_anns, self.out_channels, self.out_cells_y, self.out_cells_x).
         """
         # First two channels contain relativ x and y offset of bounding box center
@@ -172,6 +172,8 @@ class Detector(nn.Module):
                 y_center = (box[1] + box[3]) / 2
                 x_center_rel = x_center / self.img_width * self.out_cells_x
                 y_center_rel = y_center / self.img_height * self.out_cells_y
+                x_center_rel.clamp_(0, self.out_cells_x - 1)
+                y_center_rel.clamp_(0, self.out_cells_y - 1)
                 x_ind = int(x_center_rel)
                 y_ind = int(y_center_rel)
                 x_cell_pos = x_center_rel - x_ind
