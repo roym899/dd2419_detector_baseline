@@ -15,6 +15,7 @@ def draw_detections(
     bbs: List[BoundingBox], 
     category_dict: Optional[Dict[int, str]] = None,
     confidence: Optional[torch.Tensor] = None, 
+    channel_first: bool = False
 ) -> torch.Tensor:
     """Add bounding boxes to image.
 
@@ -28,9 +29,12 @@ def draw_detections(
         category_dict:
             Map from category id to string to label bounding boxes.
             No labels if None.
+        channel_first:
+            Whether the returned image should have the channel dimension first.
 
     Returns:
-        The image with bounding boxes.
+        The image with bounding boxes. Shape (H, W, C) if channel_first is False,
+        else (C, H, W).
     """
     fig, ax = plt.subplots(1)
     plt.imshow(image)
@@ -66,7 +70,12 @@ def draw_detections(
     fig.canvas.draw()
     data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,)).copy()
-    return torch.from_numpy(data.transpose((2, 0, 1))).float() / 255  # HWC -> CHW
+    plt.close(fig)
+
+    if channel_first:
+        data = data.transpose((2, 0, 1))  # HWC -> CHW
+
+    return torch.from_numpy(data).float() / 255
 
 
 def save_model(model: torch.nn.Module, path: str) -> None:

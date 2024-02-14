@@ -8,8 +8,7 @@ from typing import List, Optional, Tuple, TypedDict
 import numpy as np
 import torch
 import torch.nn as nn
-from PIL import Image
-from torchvision import models, transforms
+from torchvision import models
 
 
 class BoundingBox(TypedDict):

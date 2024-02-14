@@ -189,7 +189,10 @@ def train(device: str = "cpu") -> None:
                     for i, test_image in enumerate(test_images):
                         # add bounding boxes
                         result_image = utils.draw_detections(
-                            test_image, bbs[i], confidence=out[i, 4, :, :]
+                            test_image,
+                            bbs[i],
+                            confidence=out[i, 4, :, :],
+                            channel_first=True,
                         )
                         wandb.log(
                             {"test_img_{i}".format(i=i): wandb.Image(result_image)},
