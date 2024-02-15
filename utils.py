@@ -11,11 +11,11 @@ from detector import BoundingBox
 
 
 def draw_detections(
-    image: Image, 
-    bbs: List[BoundingBox], 
+    image: Image,
+    bbs: List[BoundingBox],
     category_dict: Optional[Dict[int, str]] = None,
-    confidence: Optional[torch.Tensor] = None, 
-    channel_first: bool = False
+    confidence: Optional[torch.Tensor] = None,
+    channel_first: bool = False,
 ) -> torch.Tensor:
     """Add bounding boxes to image.
 
@@ -63,10 +63,9 @@ def draw_detections(
                 category_dict[bb["category"]]["name"],
             )
 
-
     # Save matplotlib figure to numpy array without any borders
     plt.axis("off")
-    plt.subplots_adjust(0,0,1,1,0,0)
+    plt.subplots_adjust(0, 0, 1, 1, 0, 0)
     fig.canvas.draw()
     data = np.asarray(fig.canvas.renderer.buffer_rgba())
     plt.close(fig)
