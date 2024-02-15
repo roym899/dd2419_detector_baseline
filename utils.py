@@ -68,8 +68,7 @@ def draw_detections(
     plt.axis("off")
     plt.subplots_adjust(0,0,1,1,0,0)
     fig.canvas.draw()
-    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,)).copy()
+    data = np.asarray(fig.canvas.renderer.buffer_rgba())
     plt.close(fig)
 
     if channel_first:
